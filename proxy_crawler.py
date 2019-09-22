@@ -1,7 +1,10 @@
-"""
-Author: Ronald DeLuca
-A web scraper that loads a Bitcointalk topic and extracts post information to a CSV using a list of proxies
-"""
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# File              : proxy_crawler.py
+# Author            : Ronald DeLuca
+# Date              : 09.19.2019
+# Information       : A web scraper that loads Bitcointalk Topics and scrapes the posts into a CSV using proxies
+# -*- coding: utf-8 -*-
 
 import requests
 import re
@@ -72,7 +75,7 @@ def open_browser():
             #     '--proxy-type=socks5'
             # ]
             print("test")
-            driver = webdriver.Chrome(executable_path="/home/cipher/chromedriver", options=chrome_options)
+            driver = webdriver.Chrome(executable_path="/home/example/Downloads/chromedriver", options=chrome_options)
             print("driver worked")
     except:
         print ("REQUEST ERROR...No Proxy will be used...")
