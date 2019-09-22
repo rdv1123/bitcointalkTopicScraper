@@ -312,14 +312,14 @@ def crawler_script():
     urlCsvBases = [
         ["JEWEL", "https://bitcointalk.org/index.php?topic=5057721.0"],
     ]
-    with open('data/AnnList_Min.csv', 'r') as AnnList:
+    with open('data/AnnList.csv', 'r') as AnnList:
         reader = csv.reader(AnnList)
         next(reader)
         AnnCsv_list = list(reader)
 
-    pool = ThreadPool(1)
-    # pool.map(get_bitcointalk_posts, AnnCsv_list)
-    pool.map(get_bitcointalk_posts, urlCsvBases)
+    pool = ThreadPool(20)
+    pool.map(get_bitcointalk_posts, AnnCsv_list)
+    # pool.map(get_bitcointalk_posts, urlCsvBases)
 
     print('Scraping took {}s'.format(time.time()-start))
     '''
