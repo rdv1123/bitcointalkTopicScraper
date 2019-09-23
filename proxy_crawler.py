@@ -22,6 +22,8 @@ import random
 import dateutil.parser
 from selenium import webdriver
 from bs4 import BeautifulSoup
+from consolemenu import *
+from consolemenu.items import *
 from datetime import datetime, timedelta
 from pandas.io.json import json_normalize
 from multiprocessing.dummy import Pool as ThreadPool 
@@ -30,6 +32,7 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.chrome.options import DesiredCapabilities
 from selenium.webdriver.common.proxy import Proxy, ProxyType
 from selenium.webdriver.chrome.options import Options
+from urllib.request import urlopen
 
 # chrome_options = Options()
 # chrome_options.add_argument('--headless')
@@ -164,7 +167,7 @@ def get_bitcointalk_posts(args):
 
     # chrome_options.add_argument('--proxy-server=%s' % PROXY)
     # driver = \
-    # webdriver.Chrome(executable_path="/home/cipher/chromedriver", options=chrome_options)
+    # webdriver.Chrome(executable_path="/home/example/Downloads/chromedriver", options=chrome_options)
     driver = open_browser()
     print("returned from timeout")
     totalScraped = 0
@@ -304,28 +307,92 @@ def get_bitcointalk_posts(args):
     driver.quit()
     return 0
 
+def specificUrlSearch():
+        print("Please enter URL in the format https://bitcointalk.org/index.php?topic=5057721.0")
+        userPromptURL = input("Topic's URL: ")
+        userPromptTopicName = input("Name of Coin/Thread: ")
+
+        urlCustomBase = [ userPromptTopicName, userPromptURL]
+        get_bitcointalk_posts(urlCustomBase)
+
+def getCoinmarketcapUrls(crypto_currency):
+    """
+    Extracts the urls of a bitcointalk [ANN] thread to be parsed and downloaded
+    :return: Name of entered crpyto currency, Urls of pages in bitcointalk [ANN] thread
+    """
+
+    print(r'Parsing ' + r'"https://coinmarketcap.com/currencies/' + crypto_currency + r'"...')
+    try:
+        response = urlopen(r'https://coinmarketcap.com/currencies/' + crypto_currency)
+        soup = BeautifulSoup(response, 'lxml')
+        base_url = soup.find('a', href=True, text='Announcement')['href']
+    except:
+        print('')
+        print('ERROR: Announcement URl not found on coinmarketcap.com')
+        print('Stopping script.')
+        print('')
+        return searchCoinmarketcap()
+
+    return base_url
+
+def searchCoinmarketcap():
+    """
+    Search for a Cryptocurrency's Bitcointalk Topic URL from its name
+    using Coinmarketcap for the information
+    """
+
+    promptAns = input('Please enter a Cryptocurrency: ')
+    results = getCoinmarketcapUrls(promptAns)
+    print('Found coin {} with url {} '.format(promptAns, results))
+    args = [promptAns, results]
+    get_bitcointalk_posts(args)
+
 def crawler_script():
-    START = time.time()
+        START = time.time()
+        print('Scraping Tool Started!')
+        with open('data/AnnList.csv', 'r') as AnnList:
+            reader = csv.reader(AnnList)
+            next(reader)
+            AnnCsvList = list(reader)
 
-    print('Bitcointalk Post Scraper')
-    start = time.time()
-    urlCsvBases = [
-        ["JEWEL", "https://bitcointalk.org/index.php?topic=5057721.0"],
-    ]
-    with open('data/AnnList.csv', 'r') as AnnList:
-        reader = csv.reader(AnnList)
-        next(reader)
-        AnnCsv_list = list(reader)
+        pool = ThreadPool(4)
+        pool.map(get_bitcointalk_posts, AnnCsvList)
+        
+        print('Total scrape time in seconds : {}s'.format(time.time()-START))
 
-    pool = ThreadPool(20)
-    pool.map(get_bitcointalk_posts, AnnCsv_list)
-    # pool.map(get_bitcointalk_posts, urlCsvBases)
+def customCSVScrape():
+        START = time.time()
+        print('Enter a CSV filename exactly as it appears in the data/ directory')
+        print('Example: AnnListCustom')
+        print('Finds all URLs from the data/AnnListCustom.csv file')
+        customCsvName = input("Filename: ")
+        with open('data/' + customCsvName + '.csv', 'r') as AnnList:
+            reader = csv.reader(AnnList)
+            next(reader)
+            AnnCsvList = list(reader)
 
-    print('Scraping took {}s'.format(time.time()-start))
-    '''
-    '''
-    
-    print('Total scrape time in seconds : {}s'.format(time.time()-START))
+        print('Scraping Tool Started!')
+        pool = ThreadPool(20)
+        pool.map(get_bitcointalk_posts, AnnCsvList)
+        
+        print('Total scrape time in seconds : {}s'.format(time.time()-START))
+
+def menu_script():
+
+    # Create the menu
+    menu = ConsoleMenu("Welcome to Bitcointalk Topic Scraper", "Choose an option: ")
+
+    # A FunctionItem runs a Python function when selected
+    csvFunction_item = FunctionItem("Scrape Topic Links from Default AnnList.csv", crawler_script)
+    customCsvFunction = FunctionItem("Scrape Topics based on Custom CSV", customCSVScrape)
+    specificUrlFunction = FunctionItem("Enter a Specific Topic's URL: ", specificUrlSearch)
+    searchCoinFunction = FunctionItem("Search for a Cryptocurrency to scrape", searchCoinmarketcap)
+
+    menu.append_item(csvFunction_item)
+    menu.append_item(customCsvFunction)
+    menu.append_item(specificUrlFunction)
+    menu.append_item(searchCoinFunction)
+    menu.show()
 
 # creating new driver to use proxy
 # driver = proxy_driver(ALL_PROXIES)
@@ -348,4 +415,4 @@ def crawler_script():
 
 if __name__ == '__main__':
 
-    crawler_script()
+    menu_script()
