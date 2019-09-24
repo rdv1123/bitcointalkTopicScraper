@@ -77,16 +77,12 @@ def open_browser():
             #     '--proxy=' + proxy_ip,
             #     '--proxy-type=socks5'
             # ]
-            print("test")
             driver = webdriver.Chrome(executable_path="/home/example/Downloads/chromedriver", options=chrome_options)
-            print("driver worked")
     except:
         print ("REQUEST ERROR...No Proxy will be used...")
         driver = webdriver.Chrome()
     driver.implicitly_wait(3)
-    print("driver waiting")
     # driver.set_page_load_timeout(300)
-    print("driver timeout")
     return driver
 # def get_proxies(co=co):
 #     driver = webdriver.Chrome(chrome_options=co)
@@ -169,13 +165,11 @@ def get_bitcointalk_posts(args):
     # driver = \
     # webdriver.Chrome(executable_path="/home/example/Downloads/chromedriver", options=chrome_options)
     driver = open_browser()
-    print("returned from timeout")
     totalScraped = 0
     errors = 0
     i = 0
 
     driver.get(urlbase)
-    print("get urlbase")
     os.system('sleep 0.5')
     lastPage = False
     try:
@@ -185,7 +179,8 @@ def get_bitcointalk_posts(args):
         navPages[-2].click()
         os.system('sleep 0.5')
     except:
-        pass
+        print('{} failed to load xpath'.format(name))
+        return 0
     test = driver.find_element_by_xpath(".//td[@id='top_subject']")
     res = re.search(r'Topic:\s+(.*?)\s+\(Read (.*) times\)',test.text)
     topic = res.group(1)
@@ -299,6 +294,19 @@ def get_bitcointalk_posts(args):
             lastPage = True
         print('Scraped {} posts : {}'.format(name, totalScraped))
     print('\n*******************************************************\n')
+    lines = list()
+    with open('data/filteredList.csv', 'r') as AnnList:
+        reader = csv.reader(AnnList)
+        for row in reader:
+            lines.append(row)
+            for field in row:
+                if field == urlbase:
+                    lines.remove(row)
+
+    with open('data/filteredList.csv', 'w') as out:
+        writer = csv.writer(out)
+        writer.writerows(lines)
+
     print('{} finished scraping!' .format(name))
     print('Total of scraped {} posts : {}'.format(name, totalScraped))
     print('Errors : {}'.format(errors))
@@ -347,15 +355,41 @@ def searchCoinmarketcap():
     args = [promptAns, results]
     get_bitcointalk_posts(args)
 
+def savedSessionCrawler():
+    START = time.time()
+    print('Scraping Tool Started!')
+
+    with open('data/filteredList.csv', 'r') as AnnList:
+        reader = csv.reader(AnnList)
+        next(reader)
+        AnnCsvList = list(reader)
+
+    pool = ThreadPool(20)
+    pool.map(get_bitcointalk_posts, AnnCsvList)
+    
+    print('Total scrape time in seconds : {}s'.format(time.time()-START))
+
 def crawler_script():
         START = time.time()
         print('Scraping Tool Started!')
-        with open('data/AnnList.csv', 'r') as AnnList:
+
+        with open('data/AnnList.csv', 'r') as csvfile_input, open('data/filteredList.csv', 'w') as csvfile_output:
+            csv_input = csv.reader((x.replace('\0', '') for x in csvfile_input), delimiter=',')
+            csv_output = csv.writer(csvfile_output, delimiter=',')
+            header = ['Name', 'TopicUrl']
+            csv_output.writerow(header)
+            csv_output = csv.writer(csvfile_output, delimiter=',')
+            next(csv_input)
+
+            for row in csv_input:
+                csv_output.writerow(row)
+
+        with open('data/filteredList.csv', 'r') as AnnList:
             reader = csv.reader(AnnList)
             next(reader)
             AnnCsvList = list(reader)
 
-        pool = ThreadPool(4)
+        pool = ThreadPool(20)
         pool.map(get_bitcointalk_posts, AnnCsvList)
         
         print('Total scrape time in seconds : {}s'.format(time.time()-START))
@@ -366,7 +400,19 @@ def customCSVScrape():
         print('Example: AnnListCustom')
         print('Finds all URLs from the data/AnnListCustom.csv file')
         customCsvName = input("Filename: ")
-        with open('data/' + customCsvName + '.csv', 'r') as AnnList:
+
+        with open('data/' + customCsvName + '.csv', 'r') as csvfile_input, open('data/filteredList.csv', 'w') as csvfile_output:
+            csv_input = csv.reader((x.replace('\0', '') for x in csvfile_input), delimiter=',')
+            csv_output = csv.writer(csvfile_output, delimiter=',')
+            header = ['Name', 'TopicUrl']
+            csv_output.writerow(header)
+            csv_output = csv.writer(csvfile_output, delimiter=',')
+            next(csv_input)
+
+            for row in csv_input:
+                csv_output.writerow(row)
+
+        with open('data/filteredList.csv', 'r') as AnnList:
             reader = csv.reader(AnnList)
             next(reader)
             AnnCsvList = list(reader)
@@ -385,11 +431,13 @@ def menu_script():
     # A FunctionItem runs a Python function when selected
     csvFunction_item = FunctionItem("Scrape Topic Links from Default AnnList.csv", crawler_script)
     customCsvFunction = FunctionItem("Scrape Topics based on Custom CSV", customCSVScrape)
+    savedSessionFunction = FunctionItem("Load the remaining links from last CSV session", savedSessionCrawler)
     specificUrlFunction = FunctionItem("Enter a Specific Topic's URL: ", specificUrlSearch)
     searchCoinFunction = FunctionItem("Search for a Cryptocurrency to scrape", searchCoinmarketcap)
 
     menu.append_item(csvFunction_item)
     menu.append_item(customCsvFunction)
+    menu.append_item(savedSessionFunction)
     menu.append_item(specificUrlFunction)
     menu.append_item(searchCoinFunction)
     menu.show()
