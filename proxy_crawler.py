@@ -379,7 +379,7 @@ def searchResultsScrape():
         next(reader)
         AnnCsvList = list(reader)
 
-    pool = ThreadPool(4)
+    pool = ThreadPool(20)
     pool.map(get_bitcointalk_posts, AnnCsvList)
     
     print('Total scrape time in seconds : {}s'.format(time.time()-START))
