@@ -18,6 +18,7 @@ import praw
 import pytz
 import urllib.request
 import json
+import glob
 import dateutil.parser
 from selenium import webdriver
 from bs4 import BeautifulSoup
@@ -266,9 +267,23 @@ def searchCoinmarketcap():
 
 def savedSessionCrawler():
     START = time.time()
-    print('Scraping Tool Started!')
+    print('Scraping Tool Started using Filtered List!')
 
     with open('data/filteredList.csv', 'r') as AnnList:
+        reader = csv.reader(AnnList)
+        next(reader)
+        AnnCsvList = list(reader)
+
+    pool = ThreadPool(4)
+    pool.map(get_bitcointalk_posts, AnnCsvList)
+    
+    print('Total scrape time in seconds : {}s'.format(time.time()-START))
+
+def searchResultsScrape():
+    START = time.time()
+    print('Scraping Tool Started using previous Search Results!')
+
+    with open('data/searchResults.csv', 'r') as AnnList:
         reader = csv.reader(AnnList)
         next(reader)
         AnnCsvList = list(reader)
@@ -332,6 +347,50 @@ def customCSVScrape():
         
         print('Total scrape time in seconds : {}s'.format(time.time()-START))
 
+def checkCSVs():
+    print('Search an input CSV to see if output CSVs have already been scraped')
+    print('Enter a CSV filename exactly as it appears in the data/ directory')
+    print('Example: AnnListCustom')
+    print('Will search the data/AnnListCustom.csv file and output a searchResults.csv which displays links that have not been scraped')
+    customCsvName = input("Filename: ")
+
+    with open('data/' + customCsvName + '.csv', 'r') as csvfile_input, open('data/searchResults.csv', 'w') as csvfile_output:
+        csv_input = csv.reader((x.replace('\0', '') for x in csvfile_input), delimiter=',')
+        csv_output = csv.writer(csvfile_output, delimiter=',')
+        header = ['Name', 'TopicUrl']
+        csv_output.writerow(header)
+        csv_output = csv.writer(csvfile_output, delimiter=',')
+        next(csv_input)
+
+        for row in csv_input:
+            csv_output.writerow(row)
+
+    lines = list()
+    urlsFound = list()
+    for csv_filename in glob.glob('data/raw_data/*.csv'):
+        with open(csv_filename, 'r') as f_input:
+            reader = list(csv.reader(f_input))
+            secRow = reader[2]
+            urlsFound.append(secRow[2])
+
+    with open('data/searchResults.csv', 'r') as AnnList:
+        reader = csv.reader(AnnList)
+        for row in reader:
+            lines.append(row)
+            for field in row:
+                if field in urlsFound:
+                    lines.remove(row)
+
+    with open('data/searchResults.csv', 'w') as out:
+        writer = csv.writer(out)
+        writer.writerows(lines)
+
+    print('Searching CSV finished successfully')
+    print('Please open data/searchResults.csv to see results')
+    print('All links present in searchResults.csv still have not been scraped from the input CSV')
+    print('Main Menu Option 7 can be used to start a scraper using those searchResults.csv links as new input')
+    os.system('sleep 30')
+
 def menu_script():
 
     # Create the menu
@@ -343,12 +402,16 @@ def menu_script():
     savedSessionFunction = FunctionItem("Load the remaining links from last CSV session", savedSessionCrawler)
     specificUrlFunction = FunctionItem("Enter a Specific Topic's URL: ", specificUrlSearch)
     searchCoinFunction = FunctionItem("Search for a Cryptocurrency to scrape", searchCoinmarketcap)
+    checkCSVFunction = FunctionItem("Check a specific CSV to see if was scraped", checkCSVs)
+    scrapeUsingSearch = FunctionItem("Use searchResults as new scraping task", searchResultsScrape)
 
     menu.append_item(csvFunction_item)
     menu.append_item(customCsvFunction)
     menu.append_item(savedSessionFunction)
     menu.append_item(specificUrlFunction)
     menu.append_item(searchCoinFunction)
+    menu.append_item(checkCSVFunction)
+    menu.append_item(scrapeUsingSearch)
     menu.show()
 
 if __name__ == '__main__':
