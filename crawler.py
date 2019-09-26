@@ -73,7 +73,7 @@ def get_bitcointalk_posts(args):
 
     # chrome_options.add_argument('--proxy-server=%s' % PROXY)
     driver = \
-    webdriver.Chrome(executable_path="/home/example/Downloads/chromedriver", options=chrome_options)
+    webdriver.Chrome(executable_path="/home/cipher/chromedriver", options=chrome_options)
     totalScraped = 0
     errors = 0
     i = 0
@@ -88,9 +88,12 @@ def get_bitcointalk_posts(args):
         navPages[-2].click()
         os.system('sleep 0.5')
     except:
-        print('{} failed to load xpath'.format(name))
+        print('{} does not have extra page button'.format(name))
+    try:
+        test = driver.find_element_by_xpath(".//td[@id='top_subject']")
+    except:
+        print('{} failed to load proper page style'.format(name))
         return 0
-    test = driver.find_element_by_xpath(".//td[@id='top_subject']")
     res = re.search(r'Topic:\s+(.*?)\s+\(Read (.*) times\)',test.text)
     topic = res.group(1)
     views = res.group(2)
@@ -369,9 +372,12 @@ def checkCSVs():
     urlsFound = list()
     for csv_filename in glob.glob('data/raw_data/*.csv'):
         with open(csv_filename, 'r') as f_input:
-            reader = list(csv.reader(f_input))
-            secRow = reader[2]
-            urlsFound.append(secRow[2])
+            try:
+                reader = list(csv.reader(f_input))
+                secRow = reader[2]
+                urlsFound.append(secRow[2])
+            except:
+                print("Error with file {}".format(csv_filename))
 
     with open('data/searchResults.csv', 'r') as AnnList:
         reader = csv.reader(AnnList)
