@@ -374,7 +374,7 @@ def checkCSVs():
         with open(csv_filename, 'r') as f_input:
             try:
                 reader = list(csv.reader(f_input))
-                secRow = reader[2]
+                secRow = reader[1]
                 urlsFound.append(secRow[2])
             except:
                 print("Error with file {}".format(csv_filename))

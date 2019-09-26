@@ -463,7 +463,7 @@ def checkCSVs():
     for csv_filename in glob.glob('data/raw_data/*.csv'):
         with open(csv_filename, 'r') as f_input:
             reader = list(csv.reader(f_input))
-            secRow = reader[2]
+            secRow = reader[1]
             urlsFound.append(secRow[2])
 
     with open('data/searchResults.csv', 'r') as AnnList:
