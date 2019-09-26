@@ -73,7 +73,7 @@ def get_bitcointalk_posts(args):
 
     # chrome_options.add_argument('--proxy-server=%s' % PROXY)
     driver = \
-    webdriver.Chrome(executable_path="/home/cipher/chromedriver", options=chrome_options)
+    webdriver.Chrome(executable_path="/home/example/Downloads/chromedriver", options=chrome_options)
     totalScraped = 0
     errors = 0
     i = 0
