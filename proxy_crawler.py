@@ -180,9 +180,11 @@ def get_bitcointalk_posts(args):
         navPages[-2].click()
         os.system('sleep 0.5')
     except:
-        print('{} failed to load xpath'.format(name))
-        return 0
-    test = driver.find_element_by_xpath(".//td[@id='top_subject']")
+        print('{} does not have extra page button'.format(name))
+    try:
+        test = driver.find_element_by_xpath(".//td[@id='top_subject']")
+    except:
+        print('{} failed to load proper page style'.format(name))
     res = re.search(r'Topic:\s+(.*?)\s+\(Read (.*) times\)',test.text)
     topic = res.group(1)
     views = res.group(2)
