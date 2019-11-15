@@ -33,6 +33,7 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.chrome.options import DesiredCapabilities
 from selenium.webdriver.common.proxy import Proxy, ProxyType
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from urllib.request import urlopen
 
 # chrome_options = Options()
@@ -50,6 +51,7 @@ ROOT_PATH = os.path.join(
     'data/'
 )
 
+# Open an individual webdriver with a random proxy from the ProxyList.txt file.
 def open_browser():
     print ("Opening web page...")
     try:
@@ -78,13 +80,19 @@ def open_browser():
             #     '--proxy=' + proxy_ip,
             #     '--proxy-type=socks5'
             # ]
-            driver = webdriver.Chrome(executable_path="/home/example/Downloads/chromedriver", options=chrome_options)
+            # CHANGE THE driver_path VALUE TO THE LOCATION OF CHROMEDRIVER ON YOUR HOST
+            driver_path = "/home/example/chromedriver"
+            serv = Service(driver_path)
+            driver = \
+            webdriver.Chrome(service=serv, options=chrome_options)
+            #driver = webdriver.Chrome(executable_path="/home/example/Downloads/chromedriver", options=chrome_options)
     except:
         print ("REQUEST ERROR...No Proxy will be used...")
         driver = webdriver.Chrome()
     driver.implicitly_wait(3)
     # driver.set_page_load_timeout(300)
     return driver
+
 # def get_proxies(co=co):
 #     driver = webdriver.Chrome(chrome_options=co)
 #     driver.get("https://www.us-proxy.org/")
@@ -137,6 +145,7 @@ def open_browser():
 
 #     return driver
 
+# Scrape the posts from Bitcointalk and output to CSV
 def get_bitcointalk_posts(args):
     """ Get posts from Bitcointalk Topics. 
 
@@ -173,6 +182,7 @@ def get_bitcointalk_posts(args):
     driver.get(urlbase)
     os.system('sleep 0.5')
     lastPage = False
+    # Fetch URL and go to last page
     try:
         navPages = driver.find_elements_by_xpath(
             "//a[contains(@class, 'navPages')]"
@@ -188,11 +198,13 @@ def get_bitcointalk_posts(args):
     res = re.search(r'Topic:\s+(.*?)\s+\(Read (.*) times\)',test.text)
     topic = res.group(1)
     views = res.group(2)
+    # Check the page for a scam header
     scamHeader = False
     scamHeaderCheck = re.search(r'One or more bitcointalk.org users have reported that they strongly believe that the creator of this topic is a scammer.',driver.page_source)
     if(scamHeaderCheck != None):
         scamHeader = True
     cId = 1
+    # Go through every page of a topic and grab each post along with its relevant information
     while(not lastPage):
         posts = driver.find_elements_by_xpath(
         "//td[contains(@class,'windowbg') or contains(@class,'windowbg2')]"
@@ -298,6 +310,7 @@ def get_bitcointalk_posts(args):
         print('Scraped {} posts : {}'.format(name, totalScraped))
     print('\n*******************************************************\n')
     lines = list()
+    # Once the topic has been fully scraped, remove it from the program's tasklist CSV
     with open('data/filteredList.csv', 'r') as AnnList:
         reader = csv.reader(AnnList)
         for row in reader:
@@ -314,10 +327,12 @@ def get_bitcointalk_posts(args):
     print('Total of scraped {} posts : {}'.format(name, totalScraped))
     print('Errors : {}'.format(errors))
     fileDateName = time.strftime("%Y%m%d-%H%M%S")
+    # Finally output CSV when the program knows there are no additional posts
     bitcointalk_df.to_csv('data/raw_data/' + name + '_' + fileDateName + '.csv', index=False)
     driver.quit()
     return 0
 
+# Start scraping with a specific URL given by the user
 def specificUrlSearch():
         print("Please enter URL in the format https://bitcointalk.org/index.php?topic=5057721.0")
         userPromptURL = input("Topic's URL: ")
@@ -325,7 +340,9 @@ def specificUrlSearch():
 
         urlCustomBase = [ userPromptTopicName, userPromptURL]
         get_bitcointalk_posts(urlCustomBase)
+        os.system('sleep 30')
 
+# Use urlopen on coinmarketcap and BeautifulSoup to find the Announcement's URL dynamically.
 def getCoinmarketcapUrls(crypto_currency):
     """
     Extracts the urls of a bitcointalk [ANN] thread to be parsed and downloaded
@@ -346,6 +363,7 @@ def getCoinmarketcapUrls(crypto_currency):
 
     return base_url
 
+# Section for user to search for a cryptocurrency on Coinmarketcap
 def searchCoinmarketcap():
     """
     Search for a Cryptocurrency's Bitcointalk Topic URL from its name
@@ -358,6 +376,7 @@ def searchCoinmarketcap():
     args = [promptAns, results]
     get_bitcointalk_posts(args)
 
+# Option given to start a new scraping session based on the filteredList.csv
 def savedSessionCrawler():
     START = time.time()
     print('Scraping Tool Started using Filtered List!')
@@ -367,11 +386,14 @@ def savedSessionCrawler():
         next(reader)
         AnnCsvList = list(reader)
 
+    # Open 20 threads/instances and map each thread to a line in the input CSV
     pool = ThreadPool(20)
     pool.map(get_bitcointalk_posts, AnnCsvList)
     
     print('Total scrape time in seconds : {}s'.format(time.time()-START))
+    os.system('sleep 30')
 
+# Option to start a new scraping session based on the searchResults.csv
 def searchResultsScrape():
     START = time.time()
     print('Scraping Tool Started using previous Search Results!')
@@ -381,15 +403,19 @@ def searchResultsScrape():
         next(reader)
         AnnCsvList = list(reader)
 
+    # Open 20 threads/instances and map each thread to a line in the input CSV
     pool = ThreadPool(20)
     pool.map(get_bitcointalk_posts, AnnCsvList)
     
     print('Total scrape time in seconds : {}s'.format(time.time()-START))
+    os.system('sleep 30')
 
+# Section to start a scrape for AnnList.csv
 def crawler_script():
         START = time.time()
         print('Scraping Tool Started!')
 
+        # Copy all entries over to filteredList.csv to have an intermediate progress monitor file
         with open('data/AnnList.csv', 'r') as csvfile_input, open('data/filteredList.csv', 'w') as csvfile_output:
             csv_input = csv.reader((x.replace('\0', '') for x in csvfile_input), delimiter=',')
             csv_output = csv.writer(csvfile_output, delimiter=',')
@@ -406,11 +432,14 @@ def crawler_script():
             next(reader)
             AnnCsvList = list(reader)
 
+        # Open 20 threads/instances and map each thread to a line in the input CSV
         pool = ThreadPool(20)
         pool.map(get_bitcointalk_posts, AnnCsvList)
         
         print('Total scrape time in seconds : {}s'.format(time.time()-START))
+        os.system('sleep 30')
 
+# Allow the user to define a custom CSV name for input and send it to the scraper method
 def customCSVScrape():
         START = time.time()
         print('Enter a CSV filename exactly as it appears in the data/ directory')
@@ -418,6 +447,7 @@ def customCSVScrape():
         print('Finds all URLs from the data/AnnListCustom.csv file')
         customCsvName = input("Filename: ")
 
+        # Copy all entries over to filteredList.csv to have an intermediate progress monitor file
         with open('data/' + customCsvName + '.csv', 'r') as csvfile_input, open('data/filteredList.csv', 'w') as csvfile_output:
             csv_input = csv.reader((x.replace('\0', '') for x in csvfile_input), delimiter=',')
             csv_output = csv.writer(csvfile_output, delimiter=',')
@@ -435,11 +465,14 @@ def customCSVScrape():
             AnnCsvList = list(reader)
 
         print('Scraping Tool Started!')
+        # Open 20 threads/instances and map each thread to a line in the input CSV
         pool = ThreadPool(20)
         pool.map(get_bitcointalk_posts, AnnCsvList)
         
         print('Total scrape time in seconds : {}s'.format(time.time()-START))
+        os.system('sleep 30')
 
+# Option to check all output data in data/raw_data/* to find if the input CSV has been scraped
 def checkCSVs():
     print('Search an input CSV to see if output CSVs have already been scraped')
     print('Enter a CSV filename exactly as it appears in the data/ directory')
@@ -495,7 +528,7 @@ def menu_script():
     savedSessionFunction = FunctionItem("Load the remaining links from last CSV session", savedSessionCrawler)
     specificUrlFunction = FunctionItem("Enter a Specific Topic's URL: ", specificUrlSearch)
     searchCoinFunction = FunctionItem("Search for a Cryptocurrency to scrape", searchCoinmarketcap)
-    checkCSVFunction = FunctionItem("Check a specific CSV to see if was scraped", checkCSVs)
+    checkCSVFunction = FunctionItem("Check a specific CSV to see if it was scraped", checkCSVs)
     scrapeUsingSearch = FunctionItem("Use searchResults as new scraping task", searchResultsScrape)
 
     menu.append_item(csvFunction_item)
